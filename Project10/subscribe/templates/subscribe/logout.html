@@ -1,0 +1,11 @@
+{% extends 'subscribe/container_page.html' %}
+{% block my_content %}
+        <p>
+            Vous êtes à présent déconnecté-e.
+        </p>
+
+            <p>
+            <a href="{% url 'subscribe:login' %}"> Retour à la page de connexion </a>
+            </p>
+        
+{% endblock %}

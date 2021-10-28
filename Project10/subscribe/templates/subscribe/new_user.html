@@ -1,0 +1,16 @@
+{% extends 'subscribe/container_page.html' %}
+{% block my_content %}
+
+<div id="inscription">
+    Inscription d'un nouvel utilisateur:
+    <form method="POST" action="{% url 'subscribe:subscribe' %}">
+        {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit"/>
+    </form>
+</div>>
+<p>
+    <a href="{% url 'subscribe:login_page' %}">Retour à la page de connection</a>
+</p>
+
+{% endblock %}
