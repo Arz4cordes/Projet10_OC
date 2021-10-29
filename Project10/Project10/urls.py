@@ -6,9 +6,9 @@ from apiprojects import views as api_views
 from subscribe.views import registration_view
 
 router = routers.SimpleRouter()
-router.register('category', api_views.ProjectViewSet, basename='project')
-router.register('product', api_views.IssueViewSet, basename='issue')
-router.register('article', api_views.CommentViewSet, basename='comment')
+router.register('project', api_views.ProjectViewSet, basename='project')
+router.register('issue', api_views.IssueViewSet, basename='issue')
+router.register('comment', api_views.CommentViewSet, basename='comment')
 
 
 urlpatterns = [
