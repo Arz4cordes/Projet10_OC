@@ -6,7 +6,7 @@ from django.db.models.fields import CharField, DateTimeField, IntegerField
 class Project(models.Model):
     title = CharField(max_length=128)
     description = CharField(max_length=2048)
-    p_type = CharField(max_length=64)
+    type = CharField(max_length=64)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
 class Contributors(models.Model):

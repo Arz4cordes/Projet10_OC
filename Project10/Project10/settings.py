@@ -43,8 +43,6 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
 ]
 
-LOGIN_REDIRECT_URL = 'apiprojects:project'
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -76,6 +74,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'Project10.wsgi.application'
 
 REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+         'rest_framework.permissions.IsAuthenticated',
+         'rest_framework.permissions.IsAdminUser',
+         ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         ],

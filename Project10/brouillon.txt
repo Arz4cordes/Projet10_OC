@@ -1,0 +1,154 @@
+#####METHODE POUR L'ENREGISTREMENT D'UN NOUVEL USER, video YT#####
+##### A GARDER #####
+
+FICHIER URL
+path('register/', registration_view, name='register'),
+
+FICHIER VIEWS
+def registration_view(request):
+
+    if request.method == 'POST':
+        serializer = RegistrationSerializer(data=request.data)
+        data = {}
+        if serializer.is_valid():
+            new_user = serializer.save()
+            data['response'] = "Nouvel utilisateur enregistré avec succès !"
+            data['email'] = new_user.email
+            data['first_name'] = new_user.first_name
+            data['last_name'] = new_user.last_name
+        else:
+            print('ERROR DANS LA VALIDATION DU FORMULAIRE')
+        return Response(data)
+FICHIER SERIALIZERS
+class RegistrationSerializer(serializers.ModelSerializer):
+
+    # password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    
+    class Meta:
+        model = User()
+        fields = ['first_name', 'last_name', 'email', 'password']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+    
+    # methode validate_champ MyUser ici ?
+
+    def save(self):
+        new_user = User(
+            email=self.validated_data['email'],
+            first_name=self.validated_data['first_name'],
+            last_name=self.validated_data['last_name']
+        )
+        password = self.validated_data['password']
+        # password2 = self.validated_data['password2']
+
+        """if password != password2:
+            raise serializers.ValidationError({'password': 'Les mots de passes ne correspondent pas'})"""
+        new_user.set_password(password)
+        new_user.save()
+        return new_user
+
+
+
+
+#####EXEMPLE NOUVEL USER#####
+{"username":"albert@gmail.com", "password":"123456", "first_name": "albert", "last_name": "Londres"}
+{"username":"bea13@gmail.com", "password":"654321", "first_name": "beatrice", "last_name": "bilbo"}
+{"username":"charles@gmail.com", "password":"123456", "first_name": "charles", "last_name": "Berthoud"}
+
+
+
+##### MANAGE USER#####
+class MyUserManager(BaseUserManager):
+    def create_user(self, email, first_name, last_name, password):
+        """ Creates and saves a User with the given email, first name, last name,
+        and password.
+        """
+        if not email:
+            raise ValueError('Les utilisateurs doivent avoir un email')
+
+        user = self.model(email=self.normalize_email(email),
+                          first_name=first_name,
+                          last_name=last_name)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, first_name, last_name, password):
+        """ Creates and saves a superuser with the given email, first name, last name,
+        and password.
+        """
+        user = self.create_user(email=email,
+                                first_name=first_name,
+                                last_name=last_name,
+                                password=password)
+        user.is_admin = True
+        user.save(using=self._db)
+        return user
+
+##### aithentification dans Django, methode 2 #####
+
+@api_view(['GET',])
+def authentication_view(request):
+    actual_user = request.user
+    data = {}
+    data['first_name'] = actual_user.first_name
+    data['last_name'] = actual_user.last_name
+    data['Authenticated'] = actual_user.is_authenticated
+    print(data)
+    return Response(data)
+
+##### UTILISATION DE APIView #####
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+ 
+from shop.models import Category
+from shop.serializers import CategorySerializer
+ 
+class CategoryAPIView(APIView):
+ 
+    def get(self, *args, **kwargs):
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response(serializer.data)
+
+##### CREATION D'UN PROJET, via la méthode héritée post #####
+def post(self, request, *args, **kwargs):
+        project_data = request.data
+        new_project = Project.objects.create( 
+            title=project_data['title'],
+            description=project_data['description'],
+            type=project_data['type'],
+            author=self.request.user
+        )
+        new_project.save()
+        serializer = ProjectSerializer(new_project)
+        return Response(serializer.data)
+
+##### AUTRE METHODE #####
+def create(self, request, *args, **kwargs):
+    request.POST._mutable = True
+    request.data["author"] = request.user.pk
+    request.POST._mutable = False
+    return super(ProjectViewSet, self.create(request, *args, **kwargs))
+
+
+##### NESTED SIMPLE ROUTER #####
+projects_router = routers.SimpleRouter(trailing_slash=False)
+projects_router.register(r"projects/?", views.ProjectViewSet)
+
+users_router = routers.NestedSimpleRouter(projects_router, r"projects/?", lookup="projects", trailing_slash=False)
+users_router.register(r"users/?", views.ContributorViewSet, basename="users")
+
+urlpatterns = [
+    path("", include(projects_router.urls)),
+    path("", include(users_router.urls)),
+]
+
+
+#### QUERYSET CONTRIBUTORS ? ####user_contributions = Contributors.objects.filter(user=self.request.user.pk)
+        user_projects = []
+        for contribution in user_contributions:
+            user_projects.append(contribution.project)
+
