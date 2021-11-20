@@ -52,9 +52,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 
 #####EXEMPLE NOUVEL USER#####
-{"username":"albert@gmail.com", "password":"123456", "first_name": "albert", "last_name": "Londres"}
-{"username":"bea13@gmail.com", "password":"654321", "first_name": "beatrice", "last_name": "bilbo"}
-{"username":"charles@gmail.com", "password":"123456", "first_name": "charles", "last_name": "Berthoud"}
+ID 2    {"username":"albert@gmail.com", "password":"123456", "first_name": "albert", "last_name": "Londres"}
+ID 1    {"username":"bea13@gmail.com", "password":"654321", "first_name": "beatrice", "last_name": "bilbo"}
+ID3    {"username":"charles@gmail.com", "password":"123456", "first_name": "charles", "last_name": "Berthoud"}
 
 
 
@@ -147,7 +147,8 @@ urlpatterns = [
 ]
 
 
-#### QUERYSET CONTRIBUTORS ? ####user_contributions = Contributors.objects.filter(user=self.request.user.pk)
+#### QUERYSET CONTRIBUTORS ? ####
+user_contributions = Contributors.objects.filter(user=self.request.user.pk)
         user_projects = []
         for contribution in user_contributions:
             user_projects.append(contribution.project)
