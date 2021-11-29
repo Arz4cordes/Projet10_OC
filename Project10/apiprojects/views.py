@@ -1,7 +1,7 @@
 from django.http.response import HttpResponse
-from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-from rest_framework.views import APIView
-from rest_framework import permissions, status
+from rest_framework.viewsets import ModelViewSet
+from rest_framework import permissions
+from .permissions import IsProjectAuthor, IsProjectContributor, IsIssueAuthor, IsCommentAuthor
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from django.http import Http404
@@ -13,7 +13,8 @@ from .serializers import ContributorSerializer, ProjectSerializer, IssueSerializ
 class ProjectViewSet(ModelViewSet):
 
     serializer_class = ProjectSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated,
+                          IsProjectAuthor]
 
 
     def get_queryset(self):
@@ -22,6 +23,11 @@ class ProjectViewSet(ModelViewSet):
         for contribution in user_contributions:
             user_projects.append(contribution.project)
         return Project.objects.filter(id__in=user_projects)
+    
+    def get_object(self):
+        obj = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def create(self, request, *args, **kwargs):
             project_data = request.data
@@ -33,7 +39,7 @@ class ProjectViewSet(ModelViewSet):
             )
             new_project.save()
             new_contribution = Contributors.objects.create(
-                user=self.request.user,
+                user=self.request.user.pk,
                 project=new_project.pk,
                 permission='read, update, delete',
                 role='author'
@@ -52,7 +58,8 @@ class ProjectViewSet(ModelViewSet):
 class ContributorViewSet(ModelViewSet):
 
     serializer_class = ContributorSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated,
+                          IsProjectContributor]
 
 
     def get_queryset(self, *args, **kwargs):
@@ -83,10 +90,16 @@ class ContributorViewSet(ModelViewSet):
 class IssueViewSet(ModelViewSet):
 
     serializer_class = IssueSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated,
+                          IsIssueAuthor]
 
     def get_queryset(self):
         return Issue.objects.filter(project=self.kwargs['project_pk'])
+
+    def get_object(self):
+        obj = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def create(self, request, *args, **kwargs):
         project_id = self.kwargs['project_pk']
@@ -164,10 +177,16 @@ class CommentViewSet(ModelViewSet):
     """
 
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated,
+                          IsCommentAuthor]
 
     def get_queryset(self):
         return Comment.objects.filter(issue=self.kwargs['issue_pk'])
+
+    def get_object(self):
+        obj = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def create(self, request, *args, **kwargs):
         issue_id = self.kwargs['issue_pk']
