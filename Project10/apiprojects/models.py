@@ -15,10 +15,16 @@ class Contributors(models.Model):
     permission = CharField(max_length=256)
     role = CharField(max_length=256)
 
+    def __str__(self):
+        # To see the user's id and not the pk of the contributor's raw
+        return f"{self.user}"
+
 class Issue(models.Model):
     title = CharField(max_length=128)
     description = CharField(max_length=2048)
     tag = CharField(max_length=64)
+    priority = CharField(max_length=64)
+    state = CharField(max_length=64)
     project = models.ForeignKey(to=Project, on_delete=models.CASCADE)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     assignee = models.ForeignKey(to=Contributors, on_delete=models.CASCADE)

@@ -1,15 +1,6 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 from .models import Contributors, Issue, Project, Comment
 # IsAuthenticated est déjà géré par le framework
-# IsProjectAuthor est une permission qui vérifie si request.user est l'auteur du projet,
-#   pour modifier ou effacer un projet / pour effacer un contributeur
-# IsProjectContributor est une permission qui vérifie si request.user est un contributeur du projet,
-#   pour voir ou ajouter un contributeur, voir le projet, créer une issue ou créer un commentaire sur une issue
-# IsIssueAuthor est une permission qui vérifie si request.user est l'auteur d'une issue,
-#   pour modifier ou supprimer une issue
-# IsCommentAuthor est une permission qui vérifie si request.user est l'auteur d'un commentaire,
-#   pour modifier ou supprimer un commentaire
-
 
 
 class IsProjectAuthor(BasePermission):
@@ -46,7 +37,7 @@ class IsProjectContributor(BaseException):
         return contributors.exists() and project.exists()
 
 
-class IsIssueAuthor(BasePermission):
+class IsIssueContributor(BasePermission):
     """
     permission qui vérifie si request.user est l'auteur d'une issue,
     pour modifier ou supprimer une issue
@@ -61,7 +52,7 @@ class IsIssueAuthor(BasePermission):
                                          author=request.user)
             return issue.exists() and contributors.exists()
 
-class IsCommentAuthor(BasePermission):
+class IsCommentContributor(BasePermission):
     """
     permission qui vérifie si request.user est l'auteur d'un commentaire,
     pour modifier ou supprimer un commentaire
