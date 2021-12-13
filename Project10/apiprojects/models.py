@@ -5,10 +5,10 @@ from django.db.models.fields import CharField, DateTimeField, IntegerField
 
 
 class Project(models.Model):
-    TYPE_CHOICES = (('BE', 'back-end'),
-                    ('FE', 'front-end'),
-                    ('IOS', 'ios'),
-                    ('AD', 'android'),
+    TYPE_CHOICES = (('back-end', 'back-end'),
+                    ('front-end', 'front-end'),
+                    ('ios', 'ios'),
+                    ('android', 'android'),
     )
     title = CharField(max_length=128)
     description = CharField(max_length=2048)
