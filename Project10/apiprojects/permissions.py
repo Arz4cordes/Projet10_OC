@@ -10,12 +10,19 @@ class IsProjectAuthor(BasePermission):
     """
     
     def has_permission(self, request, view):
-        if request.method in ["GET", "POST"]:
+        print(request.user.has_perm('apiprojects.view_project'))
+        if request.method in ["POST", "GET"]:
             return True
         else:
             project = Project.objects.filter(pk=view.kwargs["pk"],
                                              author=request.user)
             return project.exists()
+
+    def has_object_permission(self, request, view, obj):
+        user_contributions = Contributors.objects.filter(user=request.user.pk)
+        user_projects = [contribution.project for contribution in user_contributions]
+        return obj.pk in user_projects
+
 
 class IsProjectContributor(BaseException):
     """
@@ -28,7 +35,6 @@ class IsProjectContributor(BaseException):
     def has_permission(self, request, view):
         contributors = Contributors.objects.filter(user=request.user.pk,
                                                    project=view.kwargs['project_pk'])
-        print(request.user.pk, request.user.email)
         if request.method in ["GET", "POST"]:
             return contributors.exists()
         else:

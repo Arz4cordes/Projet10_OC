@@ -26,52 +26,31 @@ class ProjectViewSet(ModelViewSet):
 
 
     def get_queryset(self):
-        """
-        filter the project's list, using the Contributor's table
-        only projects for which request.user is a contributor are displayed
-        """
-        user_contributions = Contributors.objects.filter(user=self.request.user.pk)
-        user_projects = [contribution.project for contribution in user_contributions]
-        return Project.objects.filter(id__in=user_projects)
-    
-    def get_object(self):
-        obj = get_object_or_404(self.get_queryset(), pk=self.kwargs["pk"])
-        self.check_object_permissions(self.request, obj)
-        return obj
-
+        if self.action == 'retrieve':
+            return Project.objects.all()
+        else:
+            user_contributions = Contributors.objects.filter(user=self.request.user.pk)
+            user_projects = [contribution.project for contribution in user_contributions]
+            return Project.objects.filter(id__in=user_projects)
+  
 
     def create(self, request, *args, **kwargs):
-            """
-            get back some attributes sent in the request,
-            create a new Project's object with the attribute author = request.user,
-            save the new project in the database ,
-            and save the request.user as the first contributor for this project
-            """
-            project_data = request.data
-            choices = ['back-end', 'back end', 'front-end', 'front end',
-                   'ios', 'android']
-            data_constraints = project_data['type'].lower() in choices
-            if data_constraints:
-                new_project = Project.objects.create( 
-                title=project_data['title'],
-                description=project_data['description'],
-                type=project_data['type'],
-                author=self.request.user
-                )
-                new_project.save()
-                new_contribution = Contributors.objects.create(
-                    user=self.request.user.pk,
-                    project=new_project.pk,
-                    permission='read, update, delete',
-                    role='author'
-                )
-                new_contribution.save()
-                serializer = ProjectSerializer(new_project)
-                return Response(serializer.data)
-            else:
-                text = 'Choisir le type parmi back-end, front-end, '
-                text += 'iOS ou Android'
-                return Response({'Type incorrect' : text})
+        request.POST._mutable = True
+        request.data["author"] = request.user.pk
+        request.POST._mutable = False
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        new_contribution = Contributors.objects.create(
+                user=request.user.pk,
+                project=serializer.data["id"],
+                permission='read, update, delete',
+                role='author'
+            )
+        new_contribution.save()
+        return Response(serializer.data)
+
+            
     
     def update(self, request, *args, **kwargs):
         request.POST._mutable = True
@@ -177,53 +156,24 @@ class IssueViewSet(ModelViewSet):
         and save the new issue in the database
         """
         project_id = self.kwargs['project_pk']
-        project_ref = get_object_or_404(Project, pk=project_id)
-        issue_data = request.data
-        # Here check if tag's data is in the constraints list
-        choices = ['bug', 'amelioration', 'amélioration', 'tache', 'tâche']
-        tag_constraint = issue_data['tag'].lower() in choices
-        # Here check if priority's data is in the constraints list
-        choices = ['faible', 'moyenne', 'élevée', 'elevee']
-        priority_constraint = issue_data['priority'].lower() in choices
-        # Here check if state's data is in the constraints list
-        choices = ['à faire', 'a faire', 'en cours', 'termine', 'terminé']
-        state_constraint = issue_data['state'].lower() in choices
-        data_constraints = tag_constraint and priority_constraint and state_constraint
-        if data_constraints:
-            try:
-                assignee_ref = int(issue_data['assignee'])
-                contributors = Contributors.objects.filter(project=project_id)
-                contributors_list = [contributor.user for contributor in contributors]
-                if assignee_ref in contributors_list:
-                    contributor_assignee =get_object_or_404(Contributors, project=project_id, user=assignee_ref)
-                    new_issue = Issue.objects.create(
-                        title=issue_data['title'],
-                        description=issue_data['description'],
-                        tag=issue_data['tag'],
-                        priority=issue_data['priority'],
-                        state=issue_data['state'],
-                        assignee=contributor_assignee,
-                        author=self.request.user,
-                        project=project_ref
-                    )
-                    new_issue.save()
-                    serializer = IssueSerializer(new_issue)
-                    return Response(serializer.data)
-                else:
-                    text = 'la personne assignée au problème doit être contributeur'
-                    output_data = {'création invalide': text}
-                    return Response(output_data)
-            except ValueError as e:
-                print(e)
-                text = "Merci d'entrer un numéro d'utilisateur (nombre entier)"
-                output_data = {'création invalide': text}
-                return Response(output_data)
+        contributors = Contributors.objects.filter(project=project_id)
+        contributors_list = [str(contributor.user) for contributor in contributors]
+        constraint = request.data['assignee'] in contributors_list
+        if not constraint:
+            return Response({'Erreur de saisie': 'assignee doit être un contributeur'})
         else:
-            output_data = {'données entrées': 'invalide',
-                           'tag': 'Choisir le tag (balise) parmi bug, amélioration ou tâche',
-                           'priority': 'Choisir priority parmi faible, moyenne ou élevée',
-                           'state': 'Choisir state (statut) parmi à faire, en cours ou terminé'}
-            return Response(output_data)
+            contributor = get_object_or_404(Contributors, project=project_id, 
+                                            user=request.data['assignee'])
+            request.POST._mutable = True
+            request.data["project"] = project_id
+            request.data["assignee"] = contributor.pk
+            request.data["author"] = request.user.pk
+            request.POST._mutable = False
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data)
+           
 
     def destroy(self, request, pk=None, *args, **kwargs):
         project_id = self.kwargs['project_pk']
@@ -233,30 +183,22 @@ class IssueViewSet(ModelViewSet):
         issue.delete()
         return HttpResponse('Issue effacée...')
 
-    def update(self, request, pk=None, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         project_id = self.kwargs['project_pk']
-        project_ref = get_object_or_404(Project, id=project_id)
-        issue_id = pk
-        issue = get_object_or_404(Issue, id=issue_id, project=project_ref)
-        issue_data = request.data
-        issue.title=issue_data['title']
-        issue.description=issue_data['description']
-        issue.tag=issue_data['tag']
-        try:
-            assignee_ref = int(issue_data['assignee'])
-            contributors = Contributors.objects.filter(project=project_id)
-            contributors_list = [contributor.user for contributor in contributors]
-            if assignee_ref in contributors_list:
-                contributor_assignee =get_object_or_404(Contributors, project=project_id, user=assignee_ref)
-                issue.assignee = contributor_assignee
-                print(issue.assignee)
-        except ValueError as e:
-            print(e)
-            text = "Merci d'entrer un numéro d'utilisateur (nombre entier)"
-            return Response(text)
-        issue.save(update_fields=['title', 'description', 'tag', 'assignee'])
-        serializer = IssueSerializer(issue)
-        return Response(serializer.data)
+        contributors = Contributors.objects.filter(project=project_id)
+        contributors_list = [str(contributor.user) for contributor in contributors]
+        constraint = request.data['assignee'] in contributors_list
+        if not constraint:
+            return Response({'Erreur de saisie': 'assignee doit être un contributeur'})
+        else:
+            contributor = get_object_or_404(Contributors, project=project_id, 
+                                            user=request.data['assignee'])
+            request.POST._mutable = True
+            request.data["project"] = project_id
+            request.data["assignee"] = contributor.pk
+            request.data["author"] = request.user.pk
+            request.POST._mutable = False
+            return super(IssueViewSet, self).update(request, *args, **kwargs)
 
 class CommentViewSet(ModelViewSet):
     """
@@ -290,15 +232,13 @@ class CommentViewSet(ModelViewSet):
         and save the new comment in the database
         """
         issue_id = self.kwargs['issue_pk']
-        issue_ref = get_object_or_404(Issue, pk=issue_id)
-        comment_data = request.data
-        new_comment = Comment.objects.create(
-            description=comment_data['description'],
-            author=self.request.user,
-            issue=issue_ref
-        )
-        new_comment.save()
-        serializer = CommentSerializer(new_comment)
+        request.POST._mutable = True
+        request.data["issue"] = issue_id
+        request.data["author"] = request.user.pk
+        request.POST._mutable = False
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
         return Response(serializer.data)
 
     def destroy(self, request, pk=None, *args, **kwargs):
@@ -311,11 +251,8 @@ class CommentViewSet(ModelViewSet):
 
     def update(self, request, pk=None, *args, **kwargs):
         issue_id = self.kwargs['issue_pk']
-        issue_ref = get_object_or_404(Issue, id=issue_id)
-        comment_id = pk
-        comment = get_object_or_404(Comment, id=comment_id, issue=issue_ref)
-        comment_data= request.data
-        comment.description = comment_data['description']
-        comment.save(update_fields=['description'])
-        serializer = CommentSerializer(comment)
-        return Response(serializer.data)
+        request.POST._mutable = True
+        request.data["issue"] = issue_id
+        request.data["author"] = request.user.pk
+        request.POST._mutable = False
+        return super(ProjectViewSet, self).update(request, *args, **kwargs)

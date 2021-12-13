@@ -194,3 +194,91 @@ POUR L'URL:
 from subscribe.views import registration_view
 
 path('signup/', registration_view, name='register'),
+
+
+
+##### ANCIENNE VERSION CREATE PROJECT DANS VIEWS #####
+
+def create(self, request, *args, **kwargs):
+            """
+            get back some attributes sent in the request,
+            create a new Project's object with the attribute author = request.user,
+            save the new project in the database ,
+            and save the request.user as the first contributor for this project
+            """
+            project_data = request.data
+            new_project = Project.objects.create( 
+            title=project_data['title'],
+            description=project_data['description'],
+            type=project_data['type'],
+            author=self.request.user
+            )
+            new_project.save()
+            new_contribution = Contributors.objects.create(
+                user=self.request.user.pk,
+                project=new_project.pk,
+                permission='read, update, delete',
+                role='author'
+            )
+            new_contribution.save()
+            serializer = ProjectSerializer(new_project)
+            return Response(serializer.data)
+
+
+
+request.POST._mutable = True
+        request.data["author"] = request.user.pk
+        request.POST._mutable = False
+        return super(ProjectViewSet, self).create(request, *args, **kwargs)
+
+
+##### ANCIENNE ISSUE #####
+project_id = self.kwargs['project_pk']
+        project_ref = get_object_or_404(Project, pk=project_id)
+        issue_data = request.data
+            assignee_ref = int(issue_data['assignee'])
+            contributors = Contributors.objects.filter(project=project_id)
+            contributors_list = [contributor.user for contributor in contributors]
+            if assignee_ref in contributors_list:
+                contributor_assignee =get_object_or_404(Contributors, project=project_id, user=assignee_ref)
+                new_issue = Issue.objects.create(
+                    title=issue_data['title'],
+                    description=issue_data['description'],
+                    tag=issue_data['tag'],
+                    priority=issue_data['priority'],
+                    state=issue_data['state'],
+                    assignee=contributor_assignee,
+                    author=self.request.user,
+                    project=project_ref
+                )
+                new_issue.save()
+                serializer = IssueSerializer(new_issue)
+                return Response(serializer.data)
+            else:
+                text = 'la personne assignée au problème doit être contributeur'
+                output_data = {'création invalide': text}
+                return Response(output_data)
+
+
+
+class CategoryListSerializer(serializers.ModelSerializer):
+ 
+    class Meta:
+        model = Category
+        fields = ['id', 'date_created', 'date_updated', 'name']
+ 
+    def validate_name(self, value):
+        # Nous vérifions que la catégorie existe
+        if Category.objects.filter(name=value).exists():
+        # En cas d'erreur, DRF nous met à disposition l'exception ValidationError
+            raise serializers.ValidationError('Category already exists')
+        return value
+
+
+class AnimalSerialiser(serializers.HyperlinkedModelSerializer):
+doctor = DoctorSerealiser()
+
+
+class Meta:
+    model = Animal
+    fields = ('id' , 'name' , 'gender' , 'breed' , 'adoption' , 'vaccines', 'doctor')
